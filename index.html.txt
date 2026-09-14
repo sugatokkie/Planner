@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 일정 & 투두리스트</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #2c3e50;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 8px;
+        }
+
+        /* 입력 폼 스타일 */
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="date"], input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        button {
+            padding: 10px 18px;
+            background-color: #4A90E2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #357ABD;
+        }
+
+        /* 리스트 스타일 */
+        ul {
+            list-style: none;
+        }
+
+        li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            gap: 10px;
+        }
+
+        li:last-child {
+            border-bottom: none;
+        }
+
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .date-badge {
+            font-size: 0.8rem;
+            background-color: #eef2f5;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .img-preview {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📅 My Daily Planner</h1>
+
+    <div class="container">
+        <!-- 일정/할 일 추가 카드 -->
+        <div class="card">
+            <h2>새 일정 / 할 일 추가</h2>
+            <form id="todo-form">
+                <div class="input-group">
+                    <input type="text" id="todo-input" placeholder="일정 또는 할 일을 입력하세요" required>
+                    <input type="date" id="date-input">
+                </div>
+                <div class="input-group">
+                    <label style="font-size: 0.9rem; color: #666; display: flex; align-items: center; gap: 5px;">
+                        📷 사진 첨부:
+                        <input type="file" id="image-input" accept="image/*">
+                    </label>
+                    <button type="submit">추가하기</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 일정 리스트 카드 -->
+        <div class="card">
+            <h2>일정 및 투두 리스트</h2>
+            <ul id="todo-list">
+                <!-- 추가된 항목이 이곳에 들어갑니다 -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const dateInput = document.getElementById('date-input');
+        const imageInput = document.getElementById('image-input');
+        const todoList = document.getElementById('todo-list');
+
+        // 페이지 로드 시 기존 저장된 데이터 불러오기
+        document.addEventListener('DOMContentLoaded', loadTodos);
+
+        todoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const text = todoInput.value;
+            const date = dateInput.value;
+            const file = imageInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageData = e.target.result;
+                    addTodoItem(text, date, imageData, false);
+                    saveTodo(text, date, imageData, false);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                addTodoItem(text, date, null, false);
+                saveTodo(text, date, null, false);
+            }
+
+            // 입력창 초기화
+            todoInput.value = '';
+            dateInput.value = '';
+            imageInput.value = '';
+        });
+
+        function addTodoItem(text, date, imageData, isCompleted) {
+            const li = document.createElement('li');
+
+            const itemLeft = document.createElement('div');
+            itemLeft.className = 'item-left';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = isCompleted;
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = text;
+            if (isCompleted) textSpan.classList.add('completed');
+
+            checkbox.addEventListener('change', function() {
+                textSpan.classList.toggle('completed');
+                updateLocalStorage();
+            });
+
+            itemLeft.appendChild(checkbox);
+
+            if (imageData) {
+                const img = document.createElement('img');
+                img.src = imageData;
+                img.className = 'img-preview';
+                itemLeft.appendChild(img);
+            }
+
+            itemLeft.appendChild(textSpan);
+
+            if (date) {
+                const dateBadge = document.createElement('span');
+                dateBadge.className = 'date-badge';
+                dateBadge.textContent = date;
+                itemLeft.appendChild(dateBadge);
+            }
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '삭제';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.addEventListener('click', function() {
+                li.remove();
+                updateLocalStorage();
+            });
+
+            li.appendChild(itemLeft);
+            li.appendChild(deleteBtn);
+            todoList.appendChild(li);
+        }
+
+        // 브라우저 LocalStorage 저장
+        function saveTodo(text, date, imageData, isCompleted) {
+            const todos = JSON.parse(localStorage.getItem('myTodos') || '[]');
+            todos.push({ text, date, imageData, isCompleted });
+            localStorage.setItem('myTodos', JSON.stringify(todos));
+        }
+
+        function loadTodos() {
+            const todos = JSON.parse(localStorage.getItem('myTodos') || '[]');
+            todos.forEach(todo => addTodoItem(todo.text, todo.date, todo.imageData, todo.isCompleted));
+        }
+
+        function updateLocalStorage() {
+            const todos = [];
+            const items = todoList.querySelectorAll('li');
+            items.forEach(li => {
+                const text = li.querySelector('.item-left span:not(.date-badge)').textContent;
+                const dateBadge = li.querySelector('.date-badge');
+                const date = dateBadge ? dateBadge.textContent : '';
+                const img = li.querySelector('.img-preview');
+                const imageData = img ? img.src : null;
+                const isCompleted = li.querySelector('input[type="checkbox"]').checked;
+
+                todos.push({ text, date, imageData, isCompleted });
+            });
+            localStorage.setItem('myTodos', JSON.stringify(todos));
+        }
+    </script>
+</body>
+</html>
