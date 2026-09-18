@@ -26,7 +26,7 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
-    <!-- Firebase SDK (Modular CDN) -->
+    <!-- Firebase SDK (Firestore 전용 - 카드 등록 불필요) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -43,11 +43,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 전역 함수로 등록하여 HTML 내 다른 스크립트에서 호출 가능하게 함
         window.FB_DB = db;
         window.FB_operations = { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc };
         
-        // Firebase 준비 완료 후 앱 초기화 실행
         window.dispatchEvent(new Event('firebase-ready'));
     </script>
 </head>
@@ -141,7 +139,7 @@
 
             const badge = document.getElementById('nav-badge');
             if (badge) {
-                badge.innerHTML = '👩‍🏫 선생님 모드 (클라우드 연동)';
+                badge.innerHTML = '👩‍🏫 선생님 모드';
                 badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
             }
 
@@ -153,7 +151,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
                         <div>
                             <h1 class="text-2xl font-bold">우리 공부방 학생 관리</h1>
-                            <p class="text-rose-100 text-sm mt-1">구글 클라우드 실시간 연동 중입니다. 링크를 학부모님께 공유하세요.</p>
+                            <p class="text-rose-100 text-sm mt-1">학생 이름을 눌러 피드백과 사진을 바로 등록하세요.</p>
                         </div>
                         <button onclick="openAddStudentModal()" class="bg-white text-rose-600 font-semibold px-5 py-2.5 rounded-2xl shadow-sm hover:bg-rose-50 transition active:scale-95 text-sm flex items-center justify-center space-x-1.5">
                             <span>＋ 새 학생 등록</span>
@@ -231,7 +229,7 @@
             const badge = document.getElementById('nav-badge');
             if (badge) {
                 if (isTeacherMode) {
-                    badge.innerHTML = '✍️ 선생님 관리 모드 (클라우드)';
+                    badge.innerHTML = '✍️ 선생님 관리 모드';
                     badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
                 } else {
                     badge.innerHTML = '🌸 학부모 전용 페이지';
@@ -276,7 +274,7 @@
                                 </div>
                             </div>
                             <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">${f.text}</p>
-                            ${f.imageUrl ? `<div class="rounded-2xl overflow-hidden border border-slate-100 max-h-80"><img src="${f.imageUrl}" class="w-full object-cover" alt="피드백 사진"></div>` : ''}
+                            ${f.imageUrl ? `<div class="rounded-2xl overflow-hidden border border-slate-100"><img src="${f.imageUrl}" class="w-full object-cover max-h-96" alt="피드백 사진"></div>` : ''}
                         </div>
                     `;
                 });
@@ -305,15 +303,17 @@
                         <button onclick="saveQuickStatus('${student.id}')" class="w-full bg-slate-900 text-white py-2 rounded-xl text-xs font-semibold hover:bg-slate-800 transition">출석/숙제 상태 저장</button>
                     </div>
 
+                    <!-- 새 피드백 작성 카드 (사진 바로 선택 가능) -->
                     <div class="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-3xl border border-rose-100 shadow-sm space-y-3">
-                        <h3 class="font-bold text-sm text-rose-900">✍️ 새로운 피드백 & 사진 남기기</h3>
+                        <h3 class="font-bold text-sm text-rose-900">✍️ 새로운 피드백 & 사진 첨부하기</h3>
                         <div>
                             <textarea id="new-feedback-text" rows="3" class="w-full bg-white border border-rose-200 rounded-2xl p-3 text-xs focus:outline-none focus:border-rose-500" placeholder="학부모님께 전달할 아이의 수업 태도, 칭찬할 점을 적어주세요."></textarea>
                         </div>
                         <div>
-                            <input type="text" id="new-feedback-image" class="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-500" placeholder="첨부 이미지 주소 (URL) - 선택사항">
+                            <label class="text-[11px] text-rose-700 font-semibold block mb-1">📷 사진 파일 선택 (폰 갤러리 / PC 사진 바로 업로드)</label>
+                            <input type="file" id="new-feedback-file" accept="image/*" class="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-xs file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
                         </div>
-                        <button onclick="addNewFeedback('${student.id}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 shadow-sm transition">피드백 등록하기</button>
+                        <button id="submit-btn" onclick="addNewFeedback('${student.id}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 shadow-sm transition">피드백 등록하기</button>
                     </div>
                 `;
             }
@@ -422,16 +422,39 @@
             }
         }
 
+        // 이미지 파일을 읽어서 Base64 문자열로 변환하는 헬퍼 함수 (무료 DB 저장용)
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 새 피드백 작성 (사진 선택 시 즉시 변환되어 클라우드 DB에 저장)
         async function addNewFeedback(studentId) {
             const text = document.getElementById('new-feedback-text').value;
-            const imageUrl = document.getElementById('new-feedback-image').value;
+            const fileInput = document.getElementById('new-feedback-file');
+            const submitBtn = document.getElementById('submit-btn');
 
             if (!text.trim()) {
                 alert('피드백 내용을 입력해주세요.');
                 return;
             }
 
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '사진 변환 및 등록 중...';
+
             try {
+                let imageUrl = '';
+                
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    // 이미지 용량 최적화를 위해 바이트 변환
+                    imageUrl = await readFileAsDataURL(file);
+                }
+
                 const student = await fetchStudentById(studentId);
                 if (!student) return;
 
@@ -440,18 +463,20 @@
                     id: 'f_' + Math.random().toString(36).substring(2, 9),
                     date: today,
                     text,
-                    imageUrl: imageUrl.trim() || ''
+                    imageUrl
                 };
 
                 const updatedFeedbacks = [...(student.feedbacks || []), newFeedback];
                 const docRef = ops().doc(getDb(), "students", studentId);
                 await ops().updateDoc(docRef, { feedbacks: updatedFeedbacks });
 
-                alert('피드백이 성공적으로 등록되었습니다!');
+                alert('피드백과 사진이 성공적으로 등록되었습니다!');
                 openTeacherManagePage(studentId);
             } catch (err) {
                 console.error("피드백 등록 오류:", err);
-                alert("등록 중 오류가 발생했습니다.");
+                alert("등록 중 오류가 발생했습니다. 사진 용량이 너무 크면 줄여서 시도해 주세요.");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '피드백 등록하기';
             }
         }
 
@@ -474,10 +499,10 @@
                                 <textarea id="edit-feedback-text" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs focus:outline-none focus:border-rose-500">${f.text}</textarea>
                             </div>
                             <div>
-                                <label class="text-xs text-slate-400 block mb-1">이미지 주소 (URL)</label>
-                                <input type="text" id="edit-feedback-image" value="${f.imageUrl || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-500">
+                                <label class="text-xs text-slate-400 block mb-1">새로운 사진으로 교체 (선택사항)</label>
+                                <input type="file" id="edit-feedback-file" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
                             </div>
-                            <button onclick="saveEditedFeedback('${student.id}', '${f.id}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 transition">수정 완료하기</button>
+                            <button id="edit-submit-btn" onclick="saveEditedFeedback('${student.id}', '${f.id}', '${f.imageUrl || ''}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 transition">수정 완료하기</button>
                         </div>
                     </div>
                 </div>
@@ -485,22 +510,33 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        async function saveEditedFeedback(studentId, feedbackId) {
+        async function saveEditedFeedback(studentId, feedbackId, oldImageUrl) {
             const text = document.getElementById('edit-feedback-text').value;
-            const imageUrl = document.getElementById('edit-feedback-image').value;
+            const fileInput = document.getElementById('edit-feedback-file');
+            const editBtn = document.getElementById('edit-submit-btn');
 
             if (!text.trim()) {
                 alert('내용을 입력해주세요.');
                 return;
             }
 
+            editBtn.disabled = true;
+            editBtn.innerHTML = '수정 중...';
+
             try {
+                let imageUrl = oldImageUrl;
+
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    imageUrl = await readFileAsDataURL(file);
+                }
+
                 const student = await fetchStudentById(studentId);
                 if (!student) return;
 
                 const updatedFeedbacks = student.feedbacks.map(f => {
                     if (f.id === feedbackId) {
-                        return { ...f, text, imageUrl: imageUrl.trim() };
+                        return { ...f, text, imageUrl };
                     }
                     return f;
                 });
@@ -514,6 +550,8 @@
             } catch (err) {
                 console.error("수정 오류:", err);
                 alert("수정 중 오류가 발생했습니다.");
+                editBtn.disabled = false;
+                editBtn.innerHTML = '수정 완료하기';
             }
         }
 
