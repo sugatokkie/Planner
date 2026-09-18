@@ -3,286 +3,431 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>내 일정 & 투두리스트</title>
+    <title>우리아이 공부방 리포트</title>
+    <!-- 구글 폰트 (Pretendard) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#fdf4f5', 100: '#fbe8eb', 500: '#e0566fd', 600: '#c83e58', 700: '#aa2d45' }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 25px;
-            color: #2c3e50;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        h2 {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: #34495e;
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 8px;
-        }
-
-        /* 입력 폼 스타일 */
-        .input-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        input[type="text"], input[type="date"], input[type="file"] {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            outline: none;
-        }
-
-        input[type="text"] {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        button {
-            padding: 10px 18px;
-            background-color: #4A90E2;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background-color: #357ABD;
-        }
-
-        /* 리스트 스타일 */
-        ul {
-            list-style: none;
-        }
-
-        li {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            gap: 10px;
-        }
-
-        li:last-child {
-            border-bottom: none;
-        }
-
-        .item-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 1;
-        }
-
-        .completed {
-            text-decoration: line-through;
-            color: #888;
-        }
-
-        .date-badge {
-            font-size: 0.8rem;
-            background-color: #eef2f5;
-            color: #666;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        .img-preview {
-            max-width: 60px;
-            max-height: 60px;
-            border-radius: 6px;
-            object-fit: cover;
-        }
-
-        .delete-btn {
-            background-color: #e74c3c;
-            padding: 6px 10px;
-            font-size: 0.85rem;
-        }
-
-        .delete-btn:hover {
-            background-color: #c0392b;
-        }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
-    <h1>📅 My Daily Planner</h1>
-
-    <div class="container">
-        <!-- 일정/할 일 추가 카드 -->
-        <div class="card">
-            <h2>새 일정 / 할 일 추가</h2>
-            <form id="todo-form">
-                <div class="input-group">
-                    <input type="text" id="todo-input" placeholder="일정 또는 할 일을 입력하세요" required>
-                    <input type="date" id="date-input">
-                </div>
-                <div class="input-group">
-                    <label style="font-size: 0.9rem; color: #666; display: flex; align-items: center; gap: 5px;">
-                        📷 사진 첨부:
-                        <input type="file" id="image-input" accept="image/*">
-                    </label>
-                    <button type="submit">추가하기</button>
-                </div>
-            </form>
+    <!-- 상단 네비게이션 -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="goHome()">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-400 flex items-center justify-center text-white font-bold shadow-sm shadow-rose-200">✨</div>
+                <span class="font-bold text-lg text-slate-900 tracking-tight">공부방 성장 리포트</span>
+            </div>
+            <div id="nav-badge" class="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
+                모드 확인 중...
+            </div>
         </div>
+    </header>
 
-        <!-- 일정 리스트 카드 -->
-        <div class="card">
-            <h2>일정 및 투두 리스트</h2>
-            <ul id="todo-list">
-                <!-- 추가된 항목이 이곳에 들어갑니다 -->
-            </ul>
-        </div>
-    </div>
+    <!-- 메인 컨테이너 -->
+    <main class="max-w-4xl mx-auto px-4 py-6 w-full flex-grow" id="app-container">
+        <!-- 동적 렌더링 영역 -->
+    </main>
 
+    <!-- 푸터 -->
+    <footer class="text-center py-6 text-xs text-slate-400 border-t border-slate-100 mt-12">
+        &copy; 2026 Study Room Feedback System. All rights reserved.
+    </footer>
+
+    <!-- 자바스크립트 로직 -->
     <script>
-        const todoForm = document.getElementById('todo-form');
-        const todoInput = document.getElementById('todo-input');
-        const dateInput = document.getElementById('date-input');
-        const imageInput = document.getElementById('image-input');
-        const todoList = document.getElementById('todo-list');
+        // 로컬스토리지 데이터 관리
+        const STORAGE_KEY = 'study_room_students_v2';
 
-        // 페이지 로드 시 기존 저장된 데이터 불러오기
-        document.addEventListener('DOMContentLoaded', loadTodos);
+        function getStudents() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (!data) {
+                // 샘플 초기 데이터
+                const initial = [
+                    {
+                        id: 's1',
+                        name: '김민준',
+                        grade: '초등학교 4학년',
+                        subject: '응용 수학 / 연산',
+                        phone: '010-1234-5678',
+                        attendance: '출석 완료 (오후 3:00)',
+                        homework: '연산 문제집 42~45쪽 완료',
+                        feedbacks: [
+                            {
+                                date: '2026-06-07',
+                                text: '오늘 분수 개념을 아주 훌륭하게 이해했습니다. 집중도가 눈에 띄게 좋아졌어요!',
+                                imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=600&q=80'
+                            }
+                        ]
+                    }
+                ];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+                return initial;
+            }
+            return JSON.parse(data);
+        }
 
-        todoForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+        function saveStudents(students) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+        }
 
-            const text = todoInput.value;
-            const date = dateInput.value;
-            const file = imageInput.files[0];
+        // 라우팅 및 화면 렌더링
+        function initApp() {
+            const params = new URLSearchParams(window.location.search);
+            const studentId = params.get('student');
 
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imageData = e.target.result;
-                    addTodoItem(text, date, imageData, false);
-                    saveTodo(text, date, imageData, false);
-                };
-                reader.readAsDataURL(file);
+            if (studentId) {
+                renderParentView(studentId);
             } else {
-                addTodoItem(text, date, null, false);
-                saveTodo(text, date, null, false);
+                renderTeacherView();
+            }
+        }
+
+        function goHome() {
+            window.location.href = window.location.pathname;
+        }
+
+        // ==========================================
+        // 1. 선생님 대시보드 화면
+        // ==========================================
+        function renderTeacherView() {
+            document.getElementById('nav-badge').innerHTML = '👩‍🏫 선생님 모드';
+            document.getElementById('nav-badge').className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
+
+            const students = getStudents();
+
+            let html = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
+                        <div>
+                            <h1 class="text-2xl font-bold">우리 공부방 학생 관리</h1>
+                            <p class="text-rose-100 text-sm mt-1">학부모님들께 개별 링크를 전달하여 아이의 피드백을 공유하세요.</p>
+                        </div>
+                        <button onclick="openAddStudentModal()" class="bg-white text-rose-600 font-semibold px-5 py-2.5 rounded-2xl shadow-sm hover:bg-rose-50 transition active:scale-95 text-sm flex items-center justify-center space-x-1.5">
+                            <span>＋ 새 학생 등록</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            `;
+
+            if (students.length === 0) {
+                html += `
+                    <div class="col-span-full text-center py-16 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-slate-400 text-sm">등록된 학생이 없습니다. 상단 버튼을 눌러 학생을 추가해주세요.</p>
+                    </div>
+                `;
+            } else {
+                students.forEach(s => {
+                    const parentLink = `${window.location.origin}${window.location.pathname}?student=${s.id}`;
+                    html += `
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 font-bold text-lg flex items-center justify-center">${s.name.charAt(0)}</div>
+                                        <div>
+                                            <h3 class="font-bold text-lg text-slate-900">${s.name}</h3>
+                                            <p class="text-xs text-slate-400">${s.grade} · ${s.subject}</p>
+                                        </div>
+                                    </div>
+                                    <button onclick="deleteStudent('${s.id}')" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
+                                </div>
+
+                                <div class="mt-4 pt-4 border-t border-slate-50 space-y-2 text-xs text-slate-600">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">출석상태</span>
+                                        <span class="font-medium text-slate-700">${s.attendance || '미기재'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">오늘 숙제</span>
+                                        <span class="font-medium text-slate-700 truncate max-w-[180px]">${s.homework || '미기재'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">등록된 피드백</span>
+                                        <span class="font-medium text-rose-600">${s.feedbacks.length}개</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
+                                <button onclick="openManageModal('${s.id}')" class="flex-1 bg-slate-900 text-white font-medium py-2.5 rounded-xl text-xs hover:bg-slate-800 transition">
+                                    관리 & 피드백 작성
+                                </button>
+                                <button onclick="copyParentLink('${parentLink}')" class="bg-rose-50 text-rose-600 font-medium px-3.5 py-2.5 rounded-xl text-xs hover:bg-rose-100 transition flex items-center justify-center" title="학부모 링크 복사">
+                                    🔗 링크복사
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
             }
 
-            // 입력창 초기화
-            todoInput.value = '';
-            dateInput.value = '';
-            imageInput.value = '';
-        });
+            html += `</div></div>`;
+            document.getElementById('app-container').innerHTML = html;
+        }
 
-        function addTodoItem(text, date, imageData, isCompleted) {
-            const li = document.createElement('li');
+        // ==========================================
+        // 2. 학부모 개별 피드백 화면
+        // ==========================================
+        function renderParentView(studentId) {
+            document.getElementById('nav-badge').innerHTML = '🌸 학부모 전용 페이지';
+            document.getElementById('nav-badge').className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100';
 
-            const itemLeft = document.createElement('div');
-            itemLeft.className = 'item-left';
+            const students = getStudents();
+            const student = students.find(s => s.id === studentId);
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = isCompleted;
-
-            const textSpan = document.createElement('span');
-            textSpan.textContent = text;
-            if (isCompleted) textSpan.classList.add('completed');
-
-            checkbox.addEventListener('change', function() {
-                textSpan.classList.toggle('completed');
-                updateLocalStorage();
-            });
-
-            itemLeft.appendChild(checkbox);
-
-            if (imageData) {
-                const img = document.createElement('img');
-                img.src = imageData;
-                img.className = 'img-preview';
-                itemLeft.appendChild(img);
+            if (!student) {
+                document.getElementById('app-container').innerHTML = `
+                    <div class="text-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm max-w-md mx-auto mt-12 p-8">
+                        <div class="text-4xl mb-3">🔍</div>
+                        <h2 class="text-lg font-bold text-slate-800">학생 정보를 찾을 수 없습니다</h2>
+                        <p class="text-slate-400 text-xs mt-1 mb-6">링크가 올바르지 않거나 삭제된 학생 정보입니다.</p>
+                        <button onclick="goHome()" class="bg-slate-900 text-white text-xs font-medium px-5 py-2.5 rounded-xl">선생님 홈으로 가기</button>
+                    </div>
+                `;
+                return;
             }
 
-            itemLeft.appendChild(textSpan);
-
-            if (date) {
-                const dateBadge = document.createElement('span');
-                dateBadge.className = 'date-badge';
-                dateBadge.textContent = date;
-                itemLeft.appendChild(dateBadge);
+            let feedbacksHtml = '';
+            if (student.feedbacks.length === 0) {
+                feedbacksHtml = `
+                    <div class="text-center py-12 bg-white rounded-3xl border border-slate-100 text-slate-400 text-xs">
+                        아직 등록된 선생님의 피드백이 없습니다.
+                    </div>
+                `;
+            } else {
+                student.feedbacks.slice().reverse().forEach(f => {
+                    feedbacksHtml += `
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                            <div class="flex items-center justify-between text-xs text-slate-400">
+                                <span class="font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg">선생님 피드백</span>
+                                <span>${f.date}</span>
+                            </div>
+                            <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">${f.text}</p>
+                            ${f.imageUrl ? `<div class="rounded-2xl overflow-hidden border border-slate-100 max-h-80"><img src="${f.imageUrl}" class="w-full object-cover" alt="피드백 사진"></div>` : ''}
+                        </div>
+                    `;
+                });
             }
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = '삭제';
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.addEventListener('click', function() {
-                li.remove();
-                updateLocalStorage();
+            let html = `
+                <div class="max-w-xl mx-auto space-y-6">
+                    <!-- 상단 환영 카드 -->
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl text-white shadow-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-2xl font-bold">${student.name.charAt(0)}</div>
+                            <div>
+                                <span class="text-xs text-rose-400 font-semibold uppercase tracking-wider">우리 아이 공부방 리포트</span>
+                                <h1 class="text-xl font-bold mt-0.5">${student.name} 학부모님, 환영합니다!</h1>
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-white/10 grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <span class="text-slate-400 block">오늘 출석 상태</span>
+                                <span class="font-medium text-emerald-400 mt-0.5 block">${student.attendance || '확인 전'}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block">오늘 숙제 및 진도</span>
+                                <span class="font-medium text-white mt-0.5 block truncate">${student.homework || '숙제 없음'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 피드백 피드 영역 -->
+                    <div class="space-y-4">
+                        <h2 class="font-bold text-slate-800 px-1 text-sm flex items-center justify-between">
+                            <span>💬 선생님 코멘트 & 활동 사진</span>
+                            <span class="text-xs font-normal text-slate-400">실시간 업데이트</span>
+                        </h2>
+                        ${feedbacksHtml}
+                    </div>
+                </div>
+            `;
+            document.getElementById('app-container').innerHTML = html;
+        }
+
+        // ==========================================
+        // 모달 및 관리 기능 (선생님 전용)
+        // ==========================================
+        function openAddStudentModal() {
+            const modalHtml = `
+                <div id="custom-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+                        <h3 class="font-bold text-lg text-slate-900">새 학생 등록</h3>
+                        <form onsubmit="handleCreateStudent(event)" class="space-y-3">
+                            <div>
+                                <label class="text-xs text-slate-500 font-medium block mb-1">학생 이름</label>
+                                <input type="text" id="new-name" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500" placeholder="예: 김민준">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 font-medium block mb-1">학년/학교</label>
+                                <input type="text" id="new-grade" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500" placeholder="예: 초등학교 4학년">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 font-medium block mb-1">대표 과목</label>
+                                <input type="text" id="new-subject" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500" placeholder="예: 초등 수학교실">
+                            </div>
+                            <div class="flex space-x-2 pt-2">
+                                <button type="button" onclick="closeModal()" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl text-xs font-semibold">취소</button>
+                                <button type="submit" class="flex-1 bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700">등록하기</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function handleCreateStudent(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-name').value;
+            const grade = document.getElementById('new-grade').value;
+            const subject = document.getElementById('new-subject').value;
+
+            const students = getStudents();
+            const newId = 's_' + Math.random().toString(36.substring(2, 9));
+            students.push({
+                id: newId,
+                name,
+                grade,
+                subject,
+                attendance: '미출석',
+                homework: '없음',
+                feedbacks: []
             });
 
-            li.appendChild(itemLeft);
-            li.appendChild(deleteBtn);
-            todoList.appendChild(li);
+            saveStudents(students);
+            closeModal();
+            renderTeacherView();
         }
 
-        // 브라우저 LocalStorage 저장
-        function saveTodo(text, date, imageData, isCompleted) {
-            const todos = JSON.parse(localStorage.getItem('myTodos') || '[]');
-            todos.push({ text, date, imageData, isCompleted });
-            localStorage.setItem('myTodos', JSON.stringify(todos));
+        function openManageModal(studentId) {
+            const students = getStudents();
+            const s = students.find(item => item.id === studentId);
+            if (!s) return;
+
+            const modalHtml = `
+                <div id="custom-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto hide-scrollbar">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-lg text-slate-900">${s.name} 학생 관리 및 피드백</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-sm font-bold px-2">✕</button>
+                        </div>
+
+                        <!-- 출석 및 숙제 업데이트 폼 -->
+                        <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
+                            <h4 class="text-xs font-bold text-slate-700">출석 및 숙제 상태 수정</h4>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">출석 상태</label>
+                                <input type="text" id="edit-attendance" value="${s.attendance || ''}" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">오늘 숙제 / 진도</label>
+                                <input type="text" id="edit-homework" value="${s.homework || ''}" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                            </div>
+                            <button onclick="saveStudentStatus('${s.id}')" class="w-full bg-slate-800 text-white py-2 rounded-xl text-xs font-semibold">상태 저장</button>
+                        </div>
+
+                        <!-- 새 피드백 작성 폼 -->
+                        <div class="space-y-3 pt-2 border-t border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-700">새로운 피드백 및 사진 추가</h4>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">코멘트 내용</label>
+                                <textarea id="feedback-text" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-rose-500" placeholder="학부모님께 전달할 아이의 수업 태도나 피드백을 적어주세요."></textarea>
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">첨부 이미지 주소 (URL) - 선택사항</label>
+                                <input type="text" id="feedback-image" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-500" placeholder="https://이미지주소.jpg (또는 빈칸)">
+                            </div>
+                            <button onclick="addFeedback('${s.id}')" class="w-full bg-rose-600 text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-rose-700">피드백 등록하기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        function loadTodos() {
-            const todos = JSON.parse(localStorage.getItem('myTodos') || '[]');
-            todos.forEach(todo => addTodoItem(todo.text, todo.date, todo.imageData, todo.isCompleted));
+        function saveStudentStatus(studentId) {
+            const students = getStudents();
+            const s = students.find(item => item.id === studentId);
+            if (!s) return;
+
+            s.attendance = document.getElementById('edit-attendance').value;
+            s.homework = document.getElementById('edit-homework').value;
+
+            saveStudents(students);
+            alert('출석 및 숙제 정보가 수정되었습니다.');
+            closeModal();
+            renderTeacherView();
         }
 
-        function updateLocalStorage() {
-            const todos = [];
-            const items = todoList.querySelectorAll('li');
-            items.forEach(li => {
-                const text = li.querySelector('.item-left span:not(.date-badge)').textContent;
-                const dateBadge = li.querySelector('.date-badge');
-                const date = dateBadge ? dateBadge.textContent : '';
-                const img = li.querySelector('.img-preview');
-                const imageData = img ? img.src : null;
-                const isCompleted = li.querySelector('input[type="checkbox"]').checked;
+        function addFeedback(studentId) {
+            const text = document.getElementById('feedback-text').value;
+            const imageUrl = document.getElementById('feedback-image').value;
 
-                todos.push({ text, date, imageData, isCompleted });
+            if (!text.trim()) {
+                alert('피드백 내용을 입력해주세요.');
+                return;
+            }
+
+            const students = getStudents();
+            const s = students.find(item => item.id === studentId);
+            if (!s) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            s.feedbacks.push({
+                date: today,
+                text,
+                imageUrl: imageUrl.trim() || ''
             });
-            localStorage.setItem('myTodos', JSON.stringify(todos));
+
+            saveStudents(students);
+            closeModal();
+            renderTeacherView();
+            alert('피드백이 성공적으로 등록되었습니다!');
         }
+
+        function deleteStudent(studentId) {
+            if (!confirm('정말 이 학생 정보를 삭제하시겠습니까?')) return;
+            let students = getStudents();
+            students = students.filter(s => s.id !== studentId);
+            saveStudents(students);
+            renderTeacherView();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            if (modal) modal.remove();
+        }
+
+        function copyParentLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('학부모 전용 링크가 클립보드에 복사되었습니다! 카카오톡이나 문자로 학부모님께 전달하세요.');
+            }).catch(() => {
+                prompt('아래 링크를 복사해주세요:', url);
+            });
+        }
+
+        // 초기 실행
+        window.onload = initApp;
     </script>
 </body>
 </html>
