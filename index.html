@@ -53,7 +53,7 @@
 
     <!-- 자바스크립트 로직 -->
     <script>
-        const STORAGE_KEY = 'study_room_students_v5';
+        const STORAGE_KEY = 'study_room_students_v6';
 
         function getStudents() {
             const data = localStorage.getItem(STORAGE_KEY);
@@ -104,8 +104,12 @@
                 studentId = hashParams.get('student');
             }
 
+            // 전역 변수나 상태로 현재 모드 구분을 명확히 함
+            window.CURRENT_STUDENT_ID = studentId;
+
             if (studentId) {
-                renderParentView(studentId, false); // 순수 학부모 링크 접속 (수정/작성 기능 숨김)
+                // 학부모 전용 링크로 들어온 경우 (isTeacherPreview = false)
+                renderParentView(studentId, false);
             } else {
                 renderTeacherView();
             }
@@ -117,6 +121,8 @@
 
         // 1. 선생님 대시보드 화면
         function renderTeacherView() {
+            if (window.CURRENT_STUDENT_ID) return; // 안전장치: 학부모 모드에서는 선생님 뷰 실행 차단
+
             const badge = document.getElementById('nav-badge');
             if (badge) {
                 badge.innerHTML = '👩‍🏫 선생님 모드';
@@ -129,7 +135,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
                         <div>
                             <h1 class="text-2xl font-bold">우리 공부방 학생 관리</h1>
-                            <p class="text-rose-100 text-sm mt-1">학생 이름을 누르면 해당 학생 페이지에서 피드백 작성, 수정, 삭제가 바로 가능합니다.</p>
+                            <p class="text-rose-100 text-sm mt-1">학생 이름을 누르면 해당 학생 관리 및 피드백 작성 페이지로 이동합니다.</p>
                         </div>
                         <button onclick="openAddStudentModal()" class="bg-white text-rose-600 font-semibold px-5 py-2.5 rounded-2xl shadow-sm hover:bg-rose-50 transition active:scale-95 text-sm flex items-center justify-center space-x-1.5">
                             <span>＋ 새 학생 등록</span>
@@ -151,12 +157,12 @@
                     html += `
                         <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition flex flex-col justify-between">
                             <div>
-                                <div class="flex items-center justify-between cursor-pointer group" onclick="previewParentView('${s.id}')" title="학생 리포트 및 피드백 페이지로 이동">
+                                <div class="flex items-center justify-between cursor-pointer group" onclick="openTeacherManagePage('${s.id}')" title="관리 페이지로 이동">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 font-bold text-lg flex items-center justify-center group-hover:bg-rose-100 transition">${s.name.charAt(0)}</div>
                                         <div>
                                             <h3 class="font-bold text-lg text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5">
-                                                ${s.name} <span class="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full font-semibold">관리 & 피드백 ✍️</span>
+                                                ${s.name} <span class="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full font-semibold">피드백 관리 ✍️</span>
                                             </h3>
                                             <p class="text-xs text-slate-400">${s.grade} · ${s.subject}</p>
                                         </div>
@@ -181,7 +187,7 @@
                             </div>
 
                             <div class="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
-                                <button onclick="previewParentView('${s.id}')" class="flex-1 bg-slate-900 text-white font-medium py-2.5 rounded-xl text-xs hover:bg-slate-800 transition">
+                                <button onclick="openTeacherManagePage('${s.id}')" class="flex-1 bg-slate-900 text-white font-medium py-2.5 rounded-xl text-xs hover:bg-slate-800 transition">
                                     피드백 작성 및 관리
                                 </button>
                                 <button onclick="copyParentLink('${parentLink}')" class="bg-rose-50 text-rose-600 font-medium px-3.5 py-2.5 rounded-xl text-xs hover:bg-rose-100 transition flex items-center justify-center" title="학부모 링크 복사">
@@ -197,11 +203,17 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        // 2. 학생 상세 페이지 (학부모 전용 또는 선생님 관리형)
-        function renderParentView(studentId, isPureParent = true) {
+        // 선생님 전용 관리 페이지 진입 (URL 파라미터를 조작하지 않고 내부 상태로 관리하여 깔끔하게 분리)
+        function openTeacherManagePage(studentId) {
+            window.scrollTo(0, 0);
+            renderParentView(studentId, false, true); // 세 번째 인자 true = 선생님이 보는 관리 화면
+        }
+
+        // 2. 학생 상세 페이지 (학부모용 vs 선생님 관리형 완벽 분리)
+        function renderParentView(studentId, isPureParent = true, isTeacherMode = false) {
             const badge = document.getElementById('nav-badge');
             if (badge) {
-                if (!isPureParent) {
+                if (isTeacherMode) {
                     badge.innerHTML = '✍️ 선생님 관리 모드';
                     badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
                 } else {
@@ -240,7 +252,7 @@
                                 <span class="font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg">선생님 피드백</span>
                                 <div class="flex items-center space-x-2">
                                     <span>${f.date}</span>
-                                    ${!isPureParent ? `
+                                    ${isTeacherMode ? `
                                         <button onclick="openEditFeedbackModal('${student.id}', '${f.id}')" class="text-slate-400 hover:text-slate-700 px-1 font-medium">수정</button>
                                         <button onclick="deleteFeedback('${student.id}', '${f.id}')" class="text-rose-400 hover:text-rose-600 px-1 font-medium">삭제</button>
                                     ` : ''}
@@ -256,7 +268,7 @@
             let html = `<div class="max-w-xl mx-auto space-y-6">`;
 
             // 선생님 관리 모드일 때만 상단 네비게이션 및 출석/숙제 수정 + 새 피드백 작성 폼 제공
-            if (!isPureParent) {
+            if (isTeacherMode) {
                 html += `
                     <button onclick="renderTeacherView()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-2xl transition flex items-center space-x-1.5">
                         <span>← 전체 학생 목록으로 돌아가기</span>
@@ -325,11 +337,6 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        function previewParentView(studentId) {
-            window.scrollTo(0, 0);
-            renderParentView(studentId, false); // false = 선생님 관리형 모드로 렌더링
-        }
-
         // 학생 등록 모달
         function openAddStudentModal() {
             const modalHtml = `
@@ -394,10 +401,10 @@
 
             saveStudents(students);
             alert('출석 및 숙제 정보가 저장되었습니다.');
-            previewParentView(studentId);
+            openTeacherManagePage(studentId);
         }
 
-        // 새 피드백 작성
+        // 새 피드백 작성 (즉시 반영)
         function addNewFeedback(studentId) {
             const text = document.getElementById('new-feedback-text').value;
             const imageUrl = document.getElementById('new-feedback-image').value;
@@ -423,7 +430,7 @@
 
             saveStudents(students);
             alert('피드백이 성공적으로 등록되었습니다!');
-            previewParentView(studentId);
+            openTeacherManagePage(studentId);
         }
 
         // 피드백 수정 모달 열기
@@ -479,7 +486,7 @@
             saveStudents(students);
             closeModal();
             alert('피드백이 수정되었습니다.');
-            previewParentView(studentId);
+            openTeacherManagePage(studentId);
         }
 
         // 피드백 삭제
@@ -493,7 +500,7 @@
             s.feedbacks = s.feedbacks.filter(item => item.id !== feedbackId);
             saveStudents(students);
             alert('피드백이 삭제되었습니다.');
-            previewParentView(studentId);
+            openTeacherManagePage(studentId);
         }
 
         function deleteStudent(studentId) {
