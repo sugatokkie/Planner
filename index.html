@@ -36,7 +36,7 @@
                 <span class="font-bold text-lg text-slate-900 tracking-tight">공부방 성장 리포트</span>
             </div>
             <div id="nav-badge" class="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
-                모드 확인 중...
+                로딩 중...
             </div>
         </div>
     </header>
@@ -53,13 +53,11 @@
 
     <!-- 자바스크립트 로직 -->
     <script>
-        // 로컬스토리지 데이터 관리
-        const STORAGE_KEY = 'study_room_students_v2';
+        const STORAGE_KEY = 'study_room_students_v3';
 
         function getStudents() {
             const data = localStorage.getItem(STORAGE_KEY);
             if (!data) {
-                // 샘플 초기 데이터
                 const initial = [
                     {
                         id: 's1',
@@ -81,43 +79,52 @@
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
                 return initial;
             }
-            return JSON.parse(data);
+            try {
+                return JSON.parse(data);
+            } catch (e) {
+                return [];
+            }
         }
 
         function saveStudents(students) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
         }
 
-       function initApp() {
-    // 해시(#) 방식과 쿼리(? ) 방식을 둘 다 지원하도록 수정하여 깃허브 배포 환경 오류 방지
-    const urlParams = new URLSearchParams(window.location.search);
-    let studentId = urlParams.get('student');
+        // 앱 실행부 (DOM이 완전히 로드된 후 실행되도록 보장)
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
 
-    // 만약 쿼리스트링으로 못 잡았을 경우 해시 값(#)으로도 체크
-    if (!studentId && window.location.hash.includes('student=')) {
-        const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
-        studentId = hashParams.get('student');
-    }
+        function initApp() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let studentId = urlParams.get('student');
 
-    if (studentId) {
-        renderParentView(studentId);
-    } else {
-        renderTeacherView();
-    }
-}
+            // 깃허브 하위 경로 또는 해시 대응
+            if (!studentId && window.location.hash.includes('student=')) {
+                const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+                studentId = hashParams.get('student');
+            }
+
+            if (studentId) {
+                renderParentView(studentId);
+            } else {
+                renderTeacherView();
+            }
+        }
+
         function goHome() {
             window.location.href = window.location.pathname;
         }
 
-        // ==========================================
         // 1. 선생님 대시보드 화면
-        // ==========================================
         function renderTeacherView() {
-            document.getElementById('nav-badge').innerHTML = '👩‍🏫 선생님 모드';
-            document.getElementById('nav-badge').className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
+            const badge = document.getElementById('nav-badge');
+            if (badge) {
+                badge.innerHTML = '👩‍🏫 선생님 모드';
+                badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
+            }
 
             const students = getStudents();
-
             let html = `
                 <div class="space-y-6">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
@@ -167,7 +174,7 @@
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-slate-400">등록된 피드백</span>
-                                        <span class="font-medium text-rose-600">${s.feedbacks.length}개</span>
+                                        <span class="font-medium text-rose-600">${s.feedbacks ? s.feedbacks.length : 0}개</span>
                                     </div>
                                 </div>
                             </div>
@@ -189,12 +196,13 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        // ==========================================
         // 2. 학부모 개별 피드백 화면
-        // ==========================================
         function renderParentView(studentId) {
-            document.getElementById('nav-badge').innerHTML = '🌸 학부모 전용 페이지';
-            document.getElementById('nav-badge').className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100';
+            const badge = document.getElementById('nav-badge');
+            if (badge) {
+                badge.innerHTML = '🌸 학부모 전용 페이지';
+                badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100';
+            }
 
             const students = getStudents();
             const student = students.find(s => s.id === studentId);
@@ -212,7 +220,7 @@
             }
 
             let feedbacksHtml = '';
-            if (student.feedbacks.length === 0) {
+            if (!student.feedbacks || student.feedbacks.length === 0) {
                 feedbacksHtml = `
                     <div class="text-center py-12 bg-white rounded-3xl border border-slate-100 text-slate-400 text-xs">
                         아직 등록된 선생님의 피드백이 없습니다.
@@ -235,7 +243,6 @@
 
             let html = `
                 <div class="max-w-xl mx-auto space-y-6">
-                    <!-- 상단 환영 카드 -->
                     <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl text-white shadow-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-2xl font-bold">${student.name.charAt(0)}</div>
@@ -256,7 +263,6 @@
                         </div>
                     </div>
 
-                    <!-- 피드백 피드 영역 -->
                     <div class="space-y-4">
                         <h2 class="font-bold text-slate-800 px-1 text-sm flex items-center justify-between">
                             <span>💬 선생님 코멘트 & 활동 사진</span>
@@ -269,13 +275,11 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        // ==========================================
-        // 모달 및 관리 기능 (선생님 전용)
-        // ==========================================
+        // 모달 및 관리 기능
         function openAddStudentModal() {
             const modalHtml = `
                 <div id="custom-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+                    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
                         <h3 class="font-bold text-lg text-slate-900">새 학생 등록</h3>
                         <form onsubmit="handleCreateStudent(event)" class="space-y-3">
                             <div>
@@ -308,7 +312,7 @@
             const subject = document.getElementById('new-subject').value;
 
             const students = getStudents();
-            const newId = 's_' + Math.random().toString(36.substring(2, 9));
+            const newId = 's_' + Math.random().toString(36).substring(2, 9);
             students.push({
                 id: newId,
                 name,
@@ -337,7 +341,6 @@
                             <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-sm font-bold px-2">✕</button>
                         </div>
 
-                        <!-- 출석 및 숙제 업데이트 폼 -->
                         <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
                             <h4 class="text-xs font-bold text-slate-700">출석 및 숙제 상태 수정</h4>
                             <div>
@@ -351,7 +354,6 @@
                             <button onclick="saveStudentStatus('${s.id}')" class="w-full bg-slate-800 text-white py-2 rounded-xl text-xs font-semibold">상태 저장</button>
                         </div>
 
-                        <!-- 새 피드백 작성 폼 -->
                         <div class="space-y-3 pt-2 border-t border-slate-100">
                             <h4 class="text-xs font-bold text-slate-700">새로운 피드백 및 사진 추가</h4>
                             <div>
@@ -398,6 +400,7 @@
             if (!s) return;
 
             const today = new Date().toISOString().split('T')[0];
+            if (!s.feedbacks) s.feedbacks = [];
             s.feedbacks.push({
                 date: today,
                 text,
@@ -430,9 +433,6 @@
                 prompt('아래 링크를 복사해주세요:', url);
             });
         }
-
-        // 초기 실행
-        window.onload = initApp;
     </script>
 </body>
 </html>
