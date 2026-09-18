@@ -88,18 +88,23 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
         }
 
-        // 라우팅 및 화면 렌더링
-        function initApp() {
-            const params = new URLSearchParams(window.location.search);
-            const studentId = params.get('student');
+       function initApp() {
+    // 해시(#) 방식과 쿼리(? ) 방식을 둘 다 지원하도록 수정하여 깃허브 배포 환경 오류 방지
+    const urlParams = new URLSearchParams(window.location.search);
+    let studentId = urlParams.get('student');
 
-            if (studentId) {
-                renderParentView(studentId);
-            } else {
-                renderTeacherView();
-            }
-        }
+    // 만약 쿼리스트링으로 못 잡았을 경우 해시 값(#)으로도 체크
+    if (!studentId && window.location.hash.includes('student=')) {
+        const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+        studentId = hashParams.get('student');
+    }
 
+    if (studentId) {
+        renderParentView(studentId);
+    } else {
+        renderTeacherView();
+    }
+}
         function goHome() {
             window.location.href = window.location.pathname;
         }
