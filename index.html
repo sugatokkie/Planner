@@ -25,6 +25,31 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
+
+    <!-- Firebase SDK (Modular CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7GjBEOPa56EoFBdL4NlMNa19F5dH7J5E",
+            authDomain: "study-room-app-e7bad.firebaseapp.com",
+            projectId: "study-room-app-e7bad",
+            storageBucket: "study-room-app-e7bad.firebasestorage.app",
+            messagingSenderId: "439462698986",
+            appId: "1:439462698986:web:e19282ba7aaed50689dc93"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 전역 함수로 등록하여 HTML 내 다른 스크립트에서 호출 가능하게 함
+        window.FB_DB = db;
+        window.FB_operations = { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc };
+        
+        // Firebase 준비 완료 후 앱 초기화 실행
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -36,14 +61,14 @@
                 <span class="font-bold text-lg text-slate-900 tracking-tight">공부방 성장 리포트</span>
             </div>
             <div id="nav-badge" class="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
-                로딩 중...
+                클라우드 연결 중...
             </div>
         </div>
     </header>
 
     <!-- 메인 컨테이너 -->
     <main class="max-w-4xl mx-auto px-4 py-6 w-full flex-grow" id="app-container">
-        <!-- 동적 렌더링 영역 -->
+        <div class="text-center py-20 text-slate-400 text-sm">구글 클라우드 데이터를 불러오는 중입니다...</div>
     </main>
 
     <!-- 푸터 -->
@@ -51,51 +76,44 @@
         &copy; 2026 Study Room Feedback System. All rights reserved.
     </footer>
 
-    <!-- 자바스크립트 로직 -->
+    <!-- 앱 비즈니스 로직 -->
     <script>
-        const STORAGE_KEY = 'study_room_students_v6';
+        window.addEventListener('firebase-ready', () => {
+            initApp();
+        });
 
-        function getStudents() {
-            const data = localStorage.getItem(STORAGE_KEY);
-            if (!data) {
-                const initial = [
-                    {
-                        id: 's1',
-                        name: '김민준',
-                        grade: '초등학교 4학년',
-                        subject: '응용 수학 / 연산',
-                        phone: '010-1234-5678',
-                        attendance: '출석 완료 (오후 3:00)',
-                        homework: '연산 문제집 42~45쪽 완료',
-                        feedbacks: [
-                            {
-                                id: 'f1',
-                                date: '2026-06-07',
-                                text: '오늘 분수 개념을 아주 훌륭하게 이해했습니다. 집중도가 눈에 띄게 좋아졌어요!',
-                                imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=600&q=80'
-                            }
-                        ]
-                    }
-                ];
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-                return initial;
-            }
+        function getDb() { return window.FB_DB; }
+        const ops = () => window.FB_operations;
+
+        async function fetchAllStudents() {
             try {
-                return JSON.parse(data);
-            } catch (e) {
+                const querySnapshot = await ops().getDocs(ops().collection(getDb(), "students"));
+                let list = [];
+                querySnapshot.forEach((docSnap) => {
+                    list.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                return list;
+            } catch (err) {
+                console.error("데이터 로딩 실패:", err);
                 return [];
             }
         }
 
-        function saveStudents(students) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+        async function fetchStudentById(studentId) {
+            try {
+                const docRef = ops().doc(getDb(), "students", studentId);
+                const docSnap = await ops().getDoc(docRef);
+                if (docSnap.exists()) {
+                    return { id: docSnap.id, ...docSnap.data() };
+                }
+                return null;
+            } catch (err) {
+                console.error("학생 조회 실패:", err);
+                return null;
+            }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initApp();
-        });
-
-        function initApp() {
+        async function initApp() {
             const urlParams = new URLSearchParams(window.location.search);
             let studentId = urlParams.get('student');
 
@@ -104,11 +122,9 @@
                 studentId = hashParams.get('student');
             }
 
-            // 전역 변수나 상태로 현재 모드 구분을 명확히 함
             window.CURRENT_STUDENT_ID = studentId;
 
             if (studentId) {
-                // 학부모 전용 링크로 들어온 경우 (isTeacherPreview = false)
                 renderParentView(studentId, false);
             } else {
                 renderTeacherView();
@@ -120,22 +136,24 @@
         }
 
         // 1. 선생님 대시보드 화면
-        function renderTeacherView() {
-            if (window.CURRENT_STUDENT_ID) return; // 안전장치: 학부모 모드에서는 선생님 뷰 실행 차단
+        async function renderTeacherView() {
+            if (window.CURRENT_STUDENT_ID) return;
 
             const badge = document.getElementById('nav-badge');
             if (badge) {
-                badge.innerHTML = '👩‍🏫 선생님 모드';
+                badge.innerHTML = '👩‍🏫 선생님 모드 (클라우드 연동)';
                 badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
             }
 
-            const students = getStudents();
+            document.getElementById('app-container').innerHTML = `<div class="text-center py-20 text-slate-400 text-sm">학생 목록 동기화 중...</div>`;
+            const students = await fetchAllStudents();
+
             let html = `
                 <div class="space-y-6">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
                         <div>
                             <h1 class="text-2xl font-bold">우리 공부방 학생 관리</h1>
-                            <p class="text-rose-100 text-sm mt-1">학생 이름을 누르면 해당 학생 관리 및 피드백 작성 페이지로 이동합니다.</p>
+                            <p class="text-rose-100 text-sm mt-1">구글 클라우드 실시간 연동 중입니다. 링크를 학부모님께 공유하세요.</p>
                         </div>
                         <button onclick="openAddStudentModal()" class="bg-white text-rose-600 font-semibold px-5 py-2.5 rounded-2xl shadow-sm hover:bg-rose-50 transition active:scale-95 text-sm flex items-center justify-center space-x-1.5">
                             <span>＋ 새 학생 등록</span>
@@ -203,18 +221,17 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        // 선생님 전용 관리 페이지 진입 (URL 파라미터를 조작하지 않고 내부 상태로 관리하여 깔끔하게 분리)
-        function openTeacherManagePage(studentId) {
+        async function openTeacherManagePage(studentId) {
             window.scrollTo(0, 0);
-            renderParentView(studentId, false, true); // 세 번째 인자 true = 선생님이 보는 관리 화면
+            renderParentView(studentId, false, true);
         }
 
-        // 2. 학생 상세 페이지 (학부모용 vs 선생님 관리형 완벽 분리)
-        function renderParentView(studentId, isPureParent = true, isTeacherMode = false) {
+        // 2. 학생 상세 페이지
+        async function renderParentView(studentId, isPureParent = true, isTeacherMode = false) {
             const badge = document.getElementById('nav-badge');
             if (badge) {
                 if (isTeacherMode) {
-                    badge.innerHTML = '✍️ 선생님 관리 모드';
+                    badge.innerHTML = '✍️ 선생님 관리 모드 (클라우드)';
                     badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100';
                 } else {
                     badge.innerHTML = '🌸 학부모 전용 페이지';
@@ -222,8 +239,8 @@
                 }
             }
 
-            const students = getStudents();
-            const student = students.find(s => s.id === studentId);
+            document.getElementById('app-container').innerHTML = `<div class="text-center py-20 text-slate-400 text-sm">리포트 로딩 중...</div>`;
+            const student = await fetchStudentById(studentId);
 
             if (!student) {
                 document.getElementById('app-container').innerHTML = `
@@ -267,14 +284,12 @@
 
             let html = `<div class="max-w-xl mx-auto space-y-6">`;
 
-            // 선생님 관리 모드일 때만 상단 네비게이션 및 출석/숙제 수정 + 새 피드백 작성 폼 제공
             if (isTeacherMode) {
                 html += `
                     <button onclick="renderTeacherView()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-2xl transition flex items-center space-x-1.5">
                         <span>← 전체 학생 목록으로 돌아가기</span>
                     </button>
 
-                    <!-- 출석 및 숙제 수정 카드 -->
                     <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-3">
                         <h3 class="font-bold text-sm text-slate-900">📋 출석 및 숙제 상태 수정</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -290,7 +305,6 @@
                         <button onclick="saveQuickStatus('${student.id}')" class="w-full bg-slate-900 text-white py-2 rounded-xl text-xs font-semibold hover:bg-slate-800 transition">출석/숙제 상태 저장</button>
                     </div>
 
-                    <!-- 새 피드백 작성 카드 -->
                     <div class="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-3xl border border-rose-100 shadow-sm space-y-3">
                         <h3 class="font-bold text-sm text-rose-900">✍️ 새로운 피드백 & 사진 남기기</h3>
                         <div>
@@ -367,45 +381,48 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        function handleCreateStudent(e) {
+        async function handleCreateStudent(e) {
             e.preventDefault();
             const name = document.getElementById('new-name').value;
             const grade = document.getElementById('new-grade').value;
             const subject = document.getElementById('new-subject').value;
 
-            const students = getStudents();
             const newId = 's_' + Math.random().toString(36).substring(2, 9);
-            students.push({
-                id: newId,
+            const newStudent = {
                 name,
                 grade,
                 subject,
                 attendance: '미출석',
                 homework: '없음',
                 feedbacks: []
-            });
+            };
 
-            saveStudents(students);
-            closeModal();
-            renderTeacherView();
+            try {
+                await ops().setDoc(ops().doc(getDb(), "students", newId), newStudent);
+                closeModal();
+                renderTeacherView();
+            } catch (err) {
+                console.error("학생 등록 오류:", err);
+                alert("학생 등록 중 오류가 발생했습니다.");
+            }
         }
 
-        // 출석/숙제 상태 바로 저장
-        function saveQuickStatus(studentId) {
-            const students = getStudents();
-            const s = students.find(item => item.id === studentId);
-            if (!s) return;
+        async function saveQuickStatus(studentId) {
+            const attendance = document.getElementById('quick-attendance').value;
+            const homework = document.getElementById('quick-homework').value;
 
-            s.attendance = document.getElementById('quick-attendance').value;
-            s.homework = document.getElementById('quick-homework').value;
-
-            saveStudents(students);
-            alert('출석 및 숙제 정보가 저장되었습니다.');
-            openTeacherManagePage(studentId);
+            try {
+                const docRef = ops().doc(getDb(), "students", studentId);
+                await ops().updateDoc(docRef, { attendance, homework });
+                alert('출석 및 숙제 정보가 저장되었습니다.');
+                openTeacherManagePage(studentId);
+            } catch (err) {
+                console.error("상태 저장 오류:", err);
+                alert("저장 중 오류가 발생했습니다.");
+            }
         }
 
-        // 새 피드백 작성 (즉시 반영)
-        function addNewFeedback(studentId) {
+        async function addNewFeedback(studentId) {
             const text = document.getElementById('new-feedback-text').value;
             const imageUrl = document.getElementById('new-feedback-image').value;
 
@@ -414,31 +431,34 @@
                 return;
             }
 
-            const students = getStudents();
-            const s = students.find(item => item.id === studentId);
-            if (!s) return;
+            try {
+                const student = await fetchStudentById(studentId);
+                if (!student) return;
 
-            const today = new Date().toISOString().split('T')[0];
-            if (!s.feedbacks) s.feedbacks = [];
-            
-            s.feedbacks.push({
-                id: 'f_' + Math.random().toString(36).substring(2, 9),
-                date: today,
-                text,
-                imageUrl: imageUrl.trim() || ''
-            });
+                const today = new Date().toISOString().split('T')[0];
+                const newFeedback = {
+                    id: 'f_' + Math.random().toString(36).substring(2, 9),
+                    date: today,
+                    text,
+                    imageUrl: imageUrl.trim() || ''
+                };
 
-            saveStudents(students);
-            alert('피드백이 성공적으로 등록되었습니다!');
-            openTeacherManagePage(studentId);
+                const updatedFeedbacks = [...(student.feedbacks || []), newFeedback];
+                const docRef = ops().doc(getDb(), "students", studentId);
+                await ops().updateDoc(docRef, { feedbacks: updatedFeedbacks });
+
+                alert('피드백이 성공적으로 등록되었습니다!');
+                openTeacherManagePage(studentId);
+            } catch (err) {
+                console.error("피드백 등록 오류:", err);
+                alert("등록 중 오류가 발생했습니다.");
+            }
         }
 
-        // 피드백 수정 모달 열기
-        function openEditFeedbackModal(studentId, feedbackId) {
-            const students = getStudents();
-            const s = students.find(item => item.id === studentId);
-            if (!s) return;
-            const f = s.feedbacks.find(item => item.id === feedbackId);
+        async function openEditFeedbackModal(studentId, feedbackId) {
+            const student = await fetchStudentById(studentId);
+            if (!student) return;
+            const f = student.feedbacks.find(item => item.id === feedbackId);
             if (!f) return;
 
             const modalHtml = `
@@ -457,7 +477,7 @@
                                 <label class="text-xs text-slate-400 block mb-1">이미지 주소 (URL)</label>
                                 <input type="text" id="edit-feedback-image" value="${f.imageUrl || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-500">
                             </div>
-                            <button onclick="saveEditedFeedback('${s.id}', '${f.id}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 transition">수정 완료하기</button>
+                            <button onclick="saveEditedFeedback('${student.id}', '${f.id}')" class="w-full bg-rose-600 text-white py-3 rounded-xl text-xs font-semibold hover:bg-rose-700 transition">수정 완료하기</button>
                         </div>
                     </div>
                 </div>
@@ -465,7 +485,7 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        function saveEditedFeedback(studentId, feedbackId) {
+        async function saveEditedFeedback(studentId, feedbackId) {
             const text = document.getElementById('edit-feedback-text').value;
             const imageUrl = document.getElementById('edit-feedback-image').value;
 
@@ -474,41 +494,58 @@
                 return;
             }
 
-            const students = getStudents();
-            const s = students.find(item => item.id === studentId);
-            if (!s) return;
-            const f = s.feedbacks.find(item => item.id === feedbackId);
-            if (!f) return;
+            try {
+                const student = await fetchStudentById(studentId);
+                if (!student) return;
 
-            f.text = text;
-            f.imageUrl = imageUrl.trim();
+                const updatedFeedbacks = student.feedbacks.map(f => {
+                    if (f.id === feedbackId) {
+                        return { ...f, text, imageUrl: imageUrl.trim() };
+                    }
+                    return f;
+                });
 
-            saveStudents(students);
-            closeModal();
-            alert('피드백이 수정되었습니다.');
-            openTeacherManagePage(studentId);
+                const docRef = ops().doc(getDb(), "students", studentId);
+                await ops().updateDoc(docRef, { feedbacks: updatedFeedbacks });
+
+                closeModal();
+                alert('피드백이 수정되었습니다.');
+                openTeacherManagePage(studentId);
+            } catch (err) {
+                console.error("수정 오류:", err);
+                alert("수정 중 오류가 발생했습니다.");
+            }
         }
 
-        // 피드백 삭제
-        function deleteFeedback(studentId, feedbackId) {
+        async function deleteFeedback(studentId, feedbackId) {
             if (!confirm('이 피드백을 삭제하시겠습니까?')) return;
 
-            const students = getStudents();
-            const s = students.find(item => item.id === studentId);
-            if (!s) return;
+            try {
+                const student = await fetchStudentById(studentId);
+                if (!student) return;
 
-            s.feedbacks = s.feedbacks.filter(item => item.id !== feedbackId);
-            saveStudents(students);
-            alert('피드백이 삭제되었습니다.');
-            openTeacherManagePage(studentId);
+                const updatedFeedbacks = student.feedbacks.filter(item => item.id !== feedbackId);
+                const docRef = ops().doc(getDb(), "students", studentId);
+                await ops().updateDoc(docRef, { feedbacks: updatedFeedbacks });
+
+                alert('피드백이 삭제되었습니다.');
+                openTeacherManagePage(studentId);
+            } catch (err) {
+                console.error("삭제 오류:", err);
+                alert("삭제 중 오류가 발생했습니다.");
+            }
         }
 
-        function deleteStudent(studentId) {
+        async function deleteStudent(studentId) {
             if (!confirm('정말 이 학생 정보를 삭제하시겠습니까?')) return;
-            let students = getStudents();
-            students = students.filter(s => s.id !== studentId);
-            saveStudents(students);
-            renderTeacherView();
+
+            try {
+                await ops().deleteDoc(ops().doc(getDb(), "students", studentId));
+                renderTeacherView();
+            } catch (err) {
+                console.error("학생 삭제 오류:", err);
+                alert("삭제 중 오류가 발생했습니다.");
+            }
         }
 
         function closeModal() {
