@@ -53,7 +53,7 @@
 
     <!-- 자바스크립트 로직 -->
     <script>
-        const STORAGE_KEY = 'study_room_students_v3';
+        const STORAGE_KEY = 'study_room_students_v4';
 
         function getStudents() {
             const data = localStorage.getItem(STORAGE_KEY);
@@ -90,7 +90,7 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
         }
 
-        // 앱 실행부 (DOM이 완전히 로드된 후 실행되도록 보장)
+        // 앱 실행부
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
         });
@@ -99,14 +99,13 @@
             const urlParams = new URLSearchParams(window.location.search);
             let studentId = urlParams.get('student');
 
-            // 깃허브 하위 경로 또는 해시 대응
             if (!studentId && window.location.hash.includes('student=')) {
                 const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
                 studentId = hashParams.get('student');
             }
 
             if (studentId) {
-                renderParentView(studentId);
+                renderParentView(studentId, false); // 학부모 단독 링크 접속
             } else {
                 renderTeacherView();
             }
@@ -130,7 +129,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-500/10">
                         <div>
                             <h1 class="text-2xl font-bold">우리 공부방 학생 관리</h1>
-                            <p class="text-rose-100 text-sm mt-1">학부모님들께 개별 링크를 전달하여 아이의 피드백을 공유하세요.</p>
+                            <p class="text-rose-100 text-sm mt-1">학생 이름을 누르면 학부모 화면을 미리 볼 수 있고, 관리를 통해 피드백을 남길 수 있어요.</p>
                         </div>
                         <button onclick="openAddStudentModal()" class="bg-white text-rose-600 font-semibold px-5 py-2.5 rounded-2xl shadow-sm hover:bg-rose-50 transition active:scale-95 text-sm flex items-center justify-center space-x-1.5">
                             <span>＋ 새 학생 등록</span>
@@ -152,15 +151,18 @@
                     html += `
                         <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition flex flex-col justify-between">
                             <div>
-                                <div class="flex items-center justify-between">
+                                <!-- 학생 이름을 누르면 학부모 피드백 미리보기 화면이 열림 -->
+                                <div class="flex items-center justify-between cursor-pointer group" onclick="previewParentView('${s.id}')" title="학부모 화면 미리보기">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 font-bold text-lg flex items-center justify-center">${s.name.charAt(0)}</div>
+                                        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 font-bold text-lg flex items-center justify-center group-hover:bg-rose-100 transition">${s.name.charAt(0)}</div>
                                         <div>
-                                            <h3 class="font-bold text-lg text-slate-900">${s.name}</h3>
+                                            <h3 class="font-bold text-lg text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5">
+                                                ${s.name} <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">미리보기 🔍</span>
+                                            </h3>
                                             <p class="text-xs text-slate-400">${s.grade} · ${s.subject}</p>
                                         </div>
                                     </div>
-                                    <button onclick="deleteStudent('${s.id}')" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
+                                    <button onclick="event.stopPropagation(); deleteStudent('${s.id}')" class="text-slate-300 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
                                 </div>
 
                                 <div class="mt-4 pt-4 border-t border-slate-50 space-y-2 text-xs text-slate-600">
@@ -196,12 +198,17 @@
             document.getElementById('app-container').innerHTML = html;
         }
 
-        // 2. 학부모 개별 피드백 화면
-        function renderParentView(studentId) {
+        // 2. 학부모 전용 피드백 화면 렌더링 (isTeacherPreview가 true면 상단에 돌아가기 버튼 표시)
+        function renderParentView(studentId, isTeacherPreview = false) {
             const badge = document.getElementById('nav-badge');
             if (badge) {
-                badge.innerHTML = '🌸 학부모 전용 페이지';
-                badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100';
+                if (isTeacherPreview) {
+                    badge.innerHTML = '👀 선생님 미리보기 모드';
+                    badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100';
+                } else {
+                    badge.innerHTML = '🌸 학부모 전용 페이지';
+                    badge.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100';
+                }
             }
 
             const students = getStudents();
@@ -243,6 +250,18 @@
 
             let html = `
                 <div class="max-w-xl mx-auto space-y-6">
+            `;
+
+            // 선생님이 대시보드에서 눌러서 들어온 경우 돌아가기 버튼 상단에 제공
+            if (isTeacherPreview) {
+                html += `
+                    <button onclick="renderTeacherView()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-2xl transition flex items-center space-x-1.5">
+                        <span>← 선생님 학생 관리 홈으로 돌아가기</span>
+                    </button>
+                `;
+            }
+
+            html += `
                     <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl text-white shadow-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-2xl font-bold">${student.name.charAt(0)}</div>
@@ -273,6 +292,11 @@
                 </div>
             `;
             document.getElementById('app-container').innerHTML = html;
+        }
+
+        function previewParentView(studentId) {
+            window.scrollTo(0, 0);
+            renderParentView(studentId, true);
         }
 
         // 모달 및 관리 기능
